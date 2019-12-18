@@ -10,18 +10,33 @@ const sockets = socketio(server);
 app.use(express.static('public'));
 
 const game = createGame();
+game.start();
 
-game.movePlayer({playerId: 'player1', keyPressed: 'ArrowDown'})
-
-
-console.log(game.state)
+game.subscribe((command) => {
+    console.log(`emitindo ${command.type}`)
+    sockets.emit(command.type, command)
+})
 
 sockets.on('connection', (socket) => {
     const playerId = socket.id;
-    console.log('player conectado como'+ playerId)
 
-    socket.emit('init', game.state)
+    game.addPlayer({playerId: playerId})
+
+    socket.emit('setup', game.state)
+
+    socket.on('disconnect', () => {
+        game.removePlayer({playerId: playerId})
+        console.log(`jogador ${playerId} desconectado`)
+    })
+
+    socket.on('move-player', (command) => {
+        command.playerId = playerId,
+        command.type = 'move-player'
+
+        game.movePlayer(command)
+    })
 })
-server.listen(3000 , () => {
-    console.log('ouvindoem 3000')
+
+server.listen(3001 , () => {
+    console.log('ouvindo em 3001')
 })
